@@ -6,7 +6,7 @@ export default function AdminTemplate() {
     return (
         <div className="min-h-screen flex flex-col">
             <AdminHeader />
-            <main className="flex-grow">
+            <main className="grow">
                 <Outlet />
             </main>
             <AdminFooter />

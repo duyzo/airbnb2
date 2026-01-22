@@ -1,11 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit'
+import authReducer from './slices/authSlice'
+import roomReducer from './slices/roomSlice'
+import locationReducer from './slices/locationSlice'
+import bookingReducer from './slices/bookingSlice'
 
 export const store = configureStore({
     reducer: {
-        // Add your reducers here
+        auth: authReducer,
+        room: roomReducer,
+        location: locationReducer,
+        booking: bookingReducer,
     },
 })
 
-// Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch

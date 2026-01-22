@@ -6,6 +6,7 @@ import Loading from '../components/Loading'
  * Higher Order Component for lazy loaded routes with Suspense
  * React 19 optimized implementation
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function withSuspense<P extends object>(
     Component: ComponentType<P>,
     FallbackComponent: ComponentType = Loading
