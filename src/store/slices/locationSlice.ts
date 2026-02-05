@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { locationService } from '../../services/locationService'
-import type { Location, LocationResponse } from '../../types'
+import type { Location, LocationResponse } from '../../types/location'
 
 interface LocationState {
     items: Location[]
@@ -22,7 +22,9 @@ export const fetchLocationsThunk = createAsyncThunk<LocationResponse>(
             return data
         } catch (error: unknown) {
             const err = error as { response?: { data?: { message?: string } } }
-            return rejectWithValue(err.response?.data?.message || 'Fetch locations failed')
+            return rejectWithValue(
+                err.response?.data?.message || 'Fetch locations failed',
+            )
         }
     },
 )

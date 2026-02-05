@@ -1,172 +1,153 @@
-import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2 } from 'lucide-react'
-import Table from '../../../components/common/Table'
+import { useState, useMemo } from 'react'
+import { Plus } from 'lucide-react'
 import Button from '../../../components/common/Button'
-import Modal from '../../../components/common/Modal'
-import Badge from '../../../components/common/Badge'
 import Pagination from '../../../components/common/Pagination'
+import { UserTable } from './_components/UserTable'
+import { UserFilters } from './_components/UserFilters'
+import { UserModal, type UserFormData } from './_components/UserModal'
+import { useUserList } from '../../../hooks/apiHooks/userHooks/useUserList'
+import { userService } from '../../../services/userService'
 import type { User } from '../../../types'
+import type { UpdateRequest, RegisterRequest } from '../../../types/user'
 
 export default function UserManagement() {
-    const [users, setUsers] = useState<User[]>([])
-    const [searchTerm, setSearchTerm] = useState('')
-    const [currentPage, setCurrentPage] = useState(1)
-    const [totalPages] = useState(5)
-    const [modalOpen, setModalOpen] = useState(false)
-    const [selectedUser, setSelectedUser] = useState<User | null>(null)
-    const [deleteModal, setDeleteModal] = useState<{ open: boolean; userId: number | null }>({
+    const { data: users = [] } = useUserList()
+    const [searchTerm, setSearchTerm] = useState<string>('')
+    const [filterRole, setFilterRole] = useState<string>('ALL')
+    const [filterGender, setFilterGender] = useState<string>('ALL')
+    const [currentPage, setCurrentPage] = useState<number>(1)
+    const pageSize = 10
+
+    const [modalState, setModalState] = useState<{
+        open: boolean
+        user: User | null
+    }>({
         open: false,
-        userId: null,
+        user: null,
     })
 
-    useEffect(() => {
-        // TODO: Fetch users from API
-        const mockUsers: User[] = Array.from({ length: 10 }, (_, i) => ({
-            id: i + 1,
-            name: `User ${i + 1}`,
-            email: `user${i + 1}@example.com`,
-            phone: `+84 12345678${i}`,
-            birthday: '1990-01-01',
-            avatar: `https://via.placeholder.com/50`,
-            gender: i % 2 === 0,
-            role: i < 2 ? 'ADMIN' : 'USER',
-        }))
-        setUsers(mockUsers)
-    }, [currentPage, searchTerm])
+    const filteredUsers = useMemo(() => {
+        return users.filter((user: User) => {
+            const matchesSearch =
+                user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.email.toLowerCase().includes(searchTerm.toLowerCase())
+            const matchesRole = filterRole === 'ALL' || user.role === filterRole
+            const matchesGender =
+                filterGender === 'ALL' ||
+                (filterGender === 'MALE' ? user.gender : !user.gender)
+            return matchesSearch && matchesRole && matchesGender
+        })
+    }, [users, searchTerm, filterRole, filterGender])
 
-    const handleDelete = () => {
-        if (deleteModal.userId) {
-            // TODO: Call delete API
-            setUsers(users.filter((u) => u.id !== deleteModal.userId))
-            setDeleteModal({ open: false, userId: null })
+    const paginatedUsers = useMemo(() => {
+        const start = (currentPage - 1) * pageSize
+        return filteredUsers.slice(start, start + pageSize)
+    }, [filteredUsers, currentPage])
+
+    const totalPages = Math.ceil(filteredUsers.length / pageSize)
+
+    const handleSaveUser = async (formData: UserFormData) => {
+        try {
+            if (modalState.user) {
+                const updatePayload: UpdateRequest = {
+                    id: modalState.user.id,
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    birthday: formData.birthday,
+                    gender: formData.gender,
+                    role: formData.role || 'USER',
+                }
+                await userService.update(updatePayload)
+            } else {
+                const createPayload: RegisterRequest = {
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password || '',
+                    phone: formData.phone,
+                    birthday: formData.birthday,
+                    gender: formData.gender,
+                }
+                await userService.create(createPayload)
+            }
+            window.location.reload()
+        } catch (error) {
+            console.log(error);
+            
+            alert('Action failed')
         }
     }
 
-    const handleEdit = (user: User) => {
-        setSelectedUser(user)
-        setModalOpen(true)
-    }
-
-    const handleAdd = () => {
-        setSelectedUser(null)
-        setModalOpen(true)
-    }
-
-    const handleSave = () => {
-        // TODO: Call create/update API
-        setModalOpen(false)
-        setSelectedUser(null)
+    const handleDeleteUser = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this user?'))
+            return
+        try {
+            await userService.delete(id)
+            window.location.reload()
+        } catch (error) {
+            console.log(error);
+            
+            alert('Delete failed')
+        }
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="container mx-auto px-4">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-4">User Management</h1>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search users..."
-                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
-                            />
-                        </div>
-                        <Button onClick={handleAdd} className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900">
-                            <Plus className="w-5 h-5" />
-                            Add User
-                        </Button>
-                    </div>
+        <div className='min-h-screen bg-gray-50 py-8'>
+            <div className='container mx-auto px-4'>
+                <div className='flex justify-between items-center mb-6'>
+                    <h1 className='text-3xl font-bold text-gray-800'>
+                        User Management
+                    </h1>
+                    <Button
+                        onClick={() =>
+                            setModalState({ open: true, user: null })
+                        }
+                        className='bg-gray-800 text-white flex items-center'
+                    >
+                        <Plus className='w-5 h-5 mr-2' /> Add User
+                    </Button>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <Table headers={['ID', 'Avatar', 'Name', 'Email', 'Phone', 'Role', 'Gender', 'Actions']}>
-                        {users.map((user) => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3">{user.id}</td>
-                                <td className="px-4 py-3">
-                                    <img
-                                        src={user.avatar || 'https://via.placeholder.com/50'}
-                                        alt={user.name}
-                                        className="w-10 h-10 rounded-full object-cover"
-                                    />
-                                </td>
-                                <td className="px-4 py-3 font-medium">{user.name}</td>
-                                <td className="px-4 py-3 text-gray-600">{user.email}</td>
-                                <td className="px-4 py-3 text-gray-600">{user.phone}</td>
-                                <td className="px-4 py-3">
-                                    <Badge variant={user.role === 'ADMIN' ? 'warning' : 'default'}>
-                                        {user.role}
-                                    </Badge>
-                                </td>
-                                <td className="px-4 py-3">{user.gender ? 'Male' : 'Female'}</td>
-                                <td className="px-4 py-3">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleEdit(user)}
-                                            className="p-1.5 hover:bg-blue-50 rounded text-blue-600"
-                                            title="Edit"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => setDeleteModal({ open: true, userId: user.id })}
-                                            className="p-1.5 hover:bg-red-50 rounded text-red-600"
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </Table>
-                </div>
+                <UserFilters
+                    searchTerm={searchTerm}
+                    onSearchChange={(val) => {
+                        setSearchTerm(val)
+                        setCurrentPage(1)
+                    }}
+                    filterRole={filterRole}
+                    onRoleChange={(val) => {
+                        setFilterRole(val)
+                        setCurrentPage(1)
+                    }}
+                    filterGender={filterGender}
+                    onGenderChange={(val) => {
+                        setFilterGender(val)
+                        setCurrentPage(1)
+                    }}
+                />
 
-                <div className="mt-6">
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
-                </div>
+                <UserTable
+                    users={paginatedUsers}
+                    onEdit={(user) => setModalState({ open: true, user })}
+                    onDelete={handleDeleteUser}
+                />
 
-                <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={selectedUser ? 'Edit User' : 'Add User'}>
-                    <form className="space-y-4">
-                        <input
-                            type="text"
-                            placeholder="Name"
-                            defaultValue={selectedUser?.name}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
+                {totalPages > 1 && (
+                    <div className='mt-6'>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
                         />
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            defaultValue={selectedUser?.email}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
-                        />
-                        <div className="flex gap-3 justify-end">
-                            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleSave} className="bg-gray-800 hover:bg-gray-900">
-                                Save
-                            </Button>
-                        </div>
-                    </form>
-                </Modal>
-
-                <Modal open={deleteModal.open} onClose={() => setDeleteModal({ open: false, userId: null })} title="Delete User">
-                    <div className="space-y-4">
-                        <p className="text-gray-700">Are you sure you want to delete this user?</p>
-                        <div className="flex gap-3 justify-end">
-                            <Button variant="secondary" onClick={() => setDeleteModal({ open: false, userId: null })}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
-                                Delete
-                            </Button>
-                        </div>
                     </div>
-                </Modal>
+                )}
+
+                <UserModal
+                    isOpen={modalState.open}
+                    user={modalState.user}
+                    onClose={() => setModalState({ open: false, user: null })}
+                    onSave={handleSaveUser}
+                />
             </div>
         </div>
     )

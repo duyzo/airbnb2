@@ -1,183 +1,188 @@
-import { useState, useEffect, useRef } from 'react'
-import { Search, Plus, Edit2, Trash2, Upload } from 'lucide-react'
-import Table from '../../../components/common/Table'
+import { useState, useMemo } from 'react'
+import { Search, Plus } from 'lucide-react'
 import Button from '../../../components/common/Button'
-import Modal from '../../../components/common/Modal'
 import Pagination from '../../../components/common/Pagination'
-import type { Location } from '../../../types'
+import { LocationTable } from './_components/LocationTable'
+import {
+    LocationModal,
+    type LocationFormData,
+} from './_components/LocationModal'
+import { useLocationList } from '../../../hooks/apiHooks'
+import { locationService } from '../../../services/locationService'
+import type {
+    Location,
+    LocationCreateRequest,
+    LocationUpdateRequest,
+} from '../../../types/location'
+import type { AuthState } from '../../../store/slices/authSlice'
+import { useSelector } from 'react-redux'
+
+interface RootState {
+    auth: AuthState
+}
 
 export default function LocationManagement() {
-    const [locations, setLocations] = useState<Location[]>([])
+    const accessToken = useSelector((state: RootState) => state.auth.token)
+    const { data: locations = [] } = useLocationList({ skipLoading: false })
+
     const [searchTerm, setSearchTerm] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
-    const [totalPages] = useState(5)
-    const [modalOpen, setModalOpen] = useState(false)
-    const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
-    const [deleteModal, setDeleteModal] = useState<{ open: boolean; locationId: number | null }>({
+    const pageSize = 10
+
+    const [modalState, setModalState] = useState<{
+        open: boolean
+        location: Location | null
+    }>({
         open: false,
-        locationId: null,
+        location: null,
     })
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
-    useEffect(() => {
-        // TODO: Fetch locations from API
-        const mockLocations: Location[] = Array.from({ length: 10 }, (_, i) => ({
-            id: i + 1,
-            tenViTri: `Location ${i + 1}`,
-            tinhThanh: `City ${i + 1}`,
-            quocGia: 'Vietnam',
-            hinhAnh: `https://images.unsplash.com/photo-156000000${i}?w=100`,
-        }))
-        setLocations(mockLocations)
-    }, [currentPage, searchTerm])
+    const filteredLocations = useMemo(() => {
+        return locations.filter(
+            (loc: Location) =>
+                loc.tenViTri.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                loc.tinhThanh.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
+    }, [locations, searchTerm])
 
-    const handleDelete = () => {
-        if (deleteModal.locationId) {
-            // TODO: Call delete API
-            setLocations(locations.filter((l) => l.id !== deleteModal.locationId))
-            setDeleteModal({ open: false, locationId: null })
+    const paginatedLocations = useMemo(() => {
+        const start = (currentPage - 1) * pageSize
+        return filteredLocations.slice(start, start + pageSize)
+    }, [filteredLocations, currentPage, pageSize])
+
+    const totalPages = Math.ceil(filteredLocations.length / pageSize)
+
+    const handleSaveLocation = async (data: LocationFormData) => {
+        const token = accessToken || ''
+        try {
+            if (modalState.location) {
+                const updatePayload: LocationUpdateRequest = {
+                    id: modalState.location.id,
+                    tenViTri: data.tenViTri,
+                    tinhThanh: data.tinhThanh,
+                    quocGia: data.quocGia,
+                    hinhAnh: data.hinhAnh,
+                }
+
+                await locationService.update(updatePayload, token)
+
+                if (data.file) {
+                    const formData = new FormData()
+                    formData.append('formFile', data.file)
+                    await locationService.uploadImage(
+                        formData,
+                        modalState.location.id,
+                        token,
+                    )
+                }
+            } else {
+                const createPayload: LocationCreateRequest = {
+                    tenViTri: data.tenViTri,
+                    tinhThanh: data.tinhThanh,
+                    quocGia: data.quocGia,
+                    hinhAnh: '',
+                }
+                const response = await locationService.create(
+                    createPayload,
+                    token,
+                )
+
+                if (data.file && response.data.content.id) {
+                    const formData = new FormData()
+                    formData.append('formFile', data.file)
+                    await locationService.uploadImage(
+                        formData,
+                        response.data.content.id,
+                        token,
+                    )
+                }
+            }
+            window.location.reload()
+        } catch (error) {
+            alert('Action failed')
+            console.log(error)
         }
     }
 
-    const handleEdit = (location: Location) => {
-        setSelectedLocation(location)
-        setModalOpen(true)
-    }
+    const handleDeleteLocation = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this location?'))
+            return
 
-    const handleAdd = () => {
-        setSelectedLocation(null)
-        setModalOpen(true)
-    }
-
-    const handleSave = () => {
-        // TODO: Call create/update API
-        setModalOpen(false)
-        setSelectedLocation(null)
+        try {
+            const token = accessToken || ''
+            await locationService.delete(id, token)
+            window.location.reload()
+        } catch (error) {
+            console.error(error)
+            alert('Delete failed')
+        }
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="container mx-auto px-4">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-4">Location Management</h1>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div className='min-h-screen bg-gray-50 py-8'>
+            <div className='container mx-auto px-4'>
+                <div className='mb-8'>
+                    <h1 className='text-3xl font-bold text-gray-800 mb-4'>
+                        Location Management
+                    </h1>
+                    <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
+                        <div className='relative flex-1 max-w-md'>
+                            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
                             <input
-                                type="text"
+                                type='text'
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search locations..."
-                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value)
+                                    setCurrentPage(1)
+                                }}
+                                placeholder='Search locations...'
+                                className='w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white'
                             />
                         </div>
-                        <Button onClick={handleAdd} className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900">
-                            <Plus className="w-5 h-5" />
+                        <Button
+                            onClick={() =>
+                                setModalState({ open: true, location: null })
+                            }
+                            className='flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white'
+                        >
+                            <Plus className='w-5 h-5' />
                             Add Location
                         </Button>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <Table headers={['ID', 'Image', 'Name', 'City', 'Country', 'Actions']}>
-                        {locations.map((location) => (
-                            <tr key={location.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3">{location.id}</td>
-                                <td className="px-4 py-3">
-                                    <img
-                                        src={location.hinhAnh}
-                                        alt={location.tenViTri}
-                                        className="w-16 h-16 object-cover rounded"
-                                    />
-                                </td>
-                                <td className="px-4 py-3 font-medium">{location.tenViTri}</td>
-                                <td className="px-4 py-3 text-gray-600">{location.tinhThanh}</td>
-                                <td className="px-4 py-3 text-gray-600">{location.quocGia}</td>
-                                <td className="px-4 py-3">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleEdit(location)}
-                                            className="p-1.5 hover:bg-blue-50 rounded text-blue-600"
-                                            title="Edit"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => setDeleteModal({ open: true, locationId: location.id })}
-                                            className="p-1.5 hover:bg-red-50 rounded text-red-600"
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </Table>
-                </div>
+                <LocationTable
+                    locations={paginatedLocations}
+                    onEdit={(location) =>
+                        setModalState({ open: true, location })
+                    }
+                    onDelete={handleDeleteLocation}
+                />
 
-                <div className="mt-6">
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
-                </div>
-
-                <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={selectedLocation ? 'Edit Location' : 'Add Location'}>
-                    <form className="space-y-4">
-                        <input
-                            type="text"
-                            placeholder="Location Name"
-                            defaultValue={selectedLocation?.tenViTri}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
+                {totalPages > 0 && (
+                    <div className='mt-6'>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
                         />
-                        <input
-                            type="text"
-                            placeholder="City/Province"
-                            defaultValue={selectedLocation?.tinhThanh}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Country"
-                            defaultValue={selectedLocation?.quocGia}
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
-                        />
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Image</label>
-                            <div className="flex gap-2">
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800"
-                                />
-                                <Button type="button" variant="secondary">
-                                    <Upload className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 justify-end">
-                            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleSave} className="bg-gray-800 hover:bg-gray-900">
-                                Save
-                            </Button>
-                        </div>
-                    </form>
-                </Modal>
-
-                <Modal open={deleteModal.open} onClose={() => setDeleteModal({ open: false, locationId: null })} title="Delete Location">
-                    <div className="space-y-4">
-                        <p className="text-gray-700">Are you sure you want to delete this location?</p>
-                        <div className="flex gap-3 justify-end">
-                            <Button variant="secondary" onClick={() => setDeleteModal({ open: false, locationId: null })}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
-                                Delete
-                            </Button>
-                        </div>
                     </div>
-                </Modal>
+                )}
+
+                <LocationModal
+                    // Key này quan trọng để Fix lỗi ESLint setState in Effect
+                    key={
+                        modalState.location
+                            ? modalState.location.id
+                            : 'create-location'
+                    }
+                    isOpen={modalState.open}
+                    location={modalState.location}
+                    onClose={() =>
+                        setModalState({ open: false, location: null })
+                    }
+                    onSave={handleSaveLocation}
+                />
             </div>
         </div>
     )

@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { roomService } from '../../services/roomService'
-import type { Room, RoomPaginationResponse, RoomSearchParams } from '../../types'
+import type {
+    Room,
+    RoomPaginationResponse,
+    RoomSearchParams,
+} from '../../types/room'
 
 interface RoomState {
     items: Room[]
@@ -16,18 +20,20 @@ const initialState: RoomState = {
     error: null,
 }
 
-export const fetchRoomsThunk = createAsyncThunk<RoomPaginationResponse, RoomSearchParams | undefined>(
-    'room/list',
-    async (params, { rejectWithValue }) => {
-        try {
-            const { data } = await roomService.list(params)
-            return data
-        } catch (error: unknown) {
-            const err = error as { response?: { data?: { message?: string } } }
-            return rejectWithValue(err.response?.data?.message || 'Fetch rooms failed')
-        }
-    },
-)
+export const fetchRoomsThunk = createAsyncThunk<
+    RoomPaginationResponse,
+    RoomSearchParams | undefined
+>('room/list', async (params, { rejectWithValue }) => {
+    try {
+        const { data } = await roomService.listPaging(params)
+        return data
+    } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } } }
+        return rejectWithValue(
+            err.response?.data?.message || 'Fetch rooms failed',
+        )
+    }
+})
 
 const roomSlice = createSlice({
     name: 'room',

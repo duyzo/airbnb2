@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { bookingService } from '../../services/bookingService'
-import type { Booking, BookingListResponse, CreateBookingRequest } from '../../types'
+import type {
+    Booking,
+    BookingListResponse,
+    CreateBookingRequest,
+} from '../../types/booking'
 
 interface BookingState {
     items: Booking[]
@@ -14,32 +18,36 @@ const initialState: BookingState = {
     error: null,
 }
 
-export const fetchBookingsByUserThunk = createAsyncThunk<BookingListResponse, number>(
-    'booking/byUser',
-    async (userId, { rejectWithValue }) => {
-        try {
-            const { data } = await bookingService.byUser(userId)
-            return data
-        } catch (error: unknown) {
-            const err = error as { response?: { data?: { message?: string } } }
-            return rejectWithValue(err.response?.data?.message || 'Fetch bookings failed')
-        }
-    },
-)
+export const fetchBookingsByUserThunk = createAsyncThunk<
+    BookingListResponse,
+    number
+>('booking/byUser', async (userId, { rejectWithValue }) => {
+    try {
+        const { data } = await bookingService.byUser(userId)
+        return data
+    } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } } }
+        return rejectWithValue(
+            err.response?.data?.message || 'Fetch bookings failed',
+        )
+    }
+})
 
-export const createBookingThunk = createAsyncThunk<BookingListResponse, CreateBookingRequest>(
-    'booking/create',
-    async (payload, { rejectWithValue }) => {
-        try {
-            await bookingService.create(payload)
-            const list = await bookingService.byUser(payload.maNguoiDung)
-            return list.data
-        } catch (error: unknown) {
-            const err = error as { response?: { data?: { message?: string } } }
-            return rejectWithValue(err.response?.data?.message || 'Create booking failed')
-        }
-    },
-)
+export const createBookingThunk = createAsyncThunk<
+    BookingListResponse,
+    CreateBookingRequest
+>('booking/create', async (payload, { rejectWithValue }) => {
+    try {
+        await bookingService.create(payload)
+        const list = await bookingService.byUser(payload.maNguoiDung)
+        return list.data
+    } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } } }
+        return rejectWithValue(
+            err.response?.data?.message || 'Create booking failed',
+        )
+    }
+})
 
 const bookingSlice = createSlice({
     name: 'booking',

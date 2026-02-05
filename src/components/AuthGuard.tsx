@@ -7,13 +7,26 @@ interface AuthGuardProps {
     redirectPath?: string
 }
 
-export default function AuthGuard({ role, redirectPath = '/auth' }: AuthGuardProps) {
+export default function AuthGuard({
+    role,
+    redirectPath = '/auth',
+}: AuthGuardProps) {
     const location = useLocation()
     const { user, token, loading } = useAppSelector((state) => state.auth)
 
     if (loading) return <Loading />
-    if (!token) return <Navigate to={redirectPath} replace state={{ from: location }} />
-    if (role && user?.role !== role) return <Navigate to="/" replace />
+
+    if (!token || !user) {
+        return <Navigate to={redirectPath} replace state={{ from: location }} />
+    }
+
+    if (user.role === 'ADMIN' && role !== 'ADMIN') {
+        return <Navigate to='/admin' replace />
+    }
+
+    if (role && user.role !== role) {
+        return <Navigate to='/' replace />
+    }
 
     return <Outlet />
 }

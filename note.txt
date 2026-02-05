@@ -1,0 +1,3 @@
+no api auth/auth-login for verify
+no api to reset password
+search only work at location and keyword

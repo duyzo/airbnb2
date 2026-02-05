@@ -13,7 +13,7 @@ export default function HomeTemplate() {
     return (
         <div className="min-h-screen flex flex-col">
             <HomeHeader />
-            <main className="flex-grow">
+            <main className="grow">
                 <Outlet />
             </main>
             <HomeFooter />
