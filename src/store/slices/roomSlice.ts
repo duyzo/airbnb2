@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { roomService } from '../../services/roomService'
 import type {
     Room,
-    RoomPaginationResponse,
+    RoomListPaginationResponse,
     RoomSearchParams,
 } from '../../types/room'
 
@@ -21,7 +21,7 @@ const initialState: RoomState = {
 }
 
 export const fetchRoomsThunk = createAsyncThunk<
-    RoomPaginationResponse,
+    RoomListPaginationResponse,
     RoomSearchParams | undefined
 >('room/list', async (params, { rejectWithValue }) => {
     try {

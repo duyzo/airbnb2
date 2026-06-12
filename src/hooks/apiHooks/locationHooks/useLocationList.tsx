@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { locationService } from '../../../services/locationService'
-import type { LocationResponse, Location } from '../../../types'
+import type { LocationListResponse, Location } from '../../../types'
 
 interface UseLocationListOptions {
     skipLoading?: boolean
@@ -16,7 +16,7 @@ export const useLocationList = (options?: UseLocationListOptions) => {
         const fetchData = async () => {
             try {
                 const response = await locationService.list({ skipLoading })
-                const dataRes: LocationResponse = response.data
+                const dataRes: LocationListResponse = response.data
                 setData(dataRes.content)
             } catch (err: unknown) {
                 setError('Something went wrong while fetching locations.')

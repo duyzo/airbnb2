@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { locationService } from '../../services/locationService'
-import type { Location, LocationResponse } from '../../types/location'
+import type { Location, LocationListResponse } from '../../types/location'
 
 interface LocationState {
     items: Location[]
@@ -14,7 +14,7 @@ const initialState: LocationState = {
     error: null,
 }
 
-export const fetchLocationsThunk = createAsyncThunk<LocationResponse>(
+export const fetchLocationsThunk = createAsyncThunk<LocationListResponse>(
     'location/list',
     async (_, { rejectWithValue }) => {
         try {
