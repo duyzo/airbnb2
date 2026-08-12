@@ -1,4 +1,4 @@
-# AirBnB Clone — Full-Stack Accommodation Booking Platform
+# AirBnB — Full-Stack Accommodation Booking Platform
 
 A **production-grade, full-stack Airbnb clone** built with React 19, TypeScript, Redux Toolkit, and Tailwind CSS v4. The platform delivers a pixel-perfect accommodation browsing experience with real-time booking, user authentication, and a complete admin management dashboard.
 
