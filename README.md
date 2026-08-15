@@ -282,6 +282,8 @@ Copy the example file and fill in your credentials:
 cp .env.example .env
 ```
 
+> ⚠️ Do not commit `.env` to GitHub. Keep real values only in local `.env` files and deployment provider secrets.
+
 | Variable | Description |
 | --- | --- |
 | `VITE_API_URL` | Base URL of the CyberSoft AirBnB REST API |
@@ -396,7 +398,7 @@ All API communication is centralized through an Axios instance with:
 The project is configured for **Vercel** deployment out of the box:
 
 1. Connect the GitHub repository to Vercel.
-2. Set environment variables (`VITE_API_URL`, `VITE_TOKEN_CYBERSOFT`) in the Vercel dashboard.
+2. Set environment variables (`VITE_API_URL`, `VITE_TOKEN_CYBERSOFT`) in the Vercel dashboard (`Project Settings` → `Environment Variables`) using values from your local `.env`.
 3. Vercel auto-detects Vite and applies the SPA rewrite from `vercel.json`.
 
 ```json
